@@ -24,6 +24,7 @@ ctx.verify_mode = ssl.CERT_NONE
 
 def createInfluxdbDataBase(dbHost='localhost', dbPort=8086, dbUser='root', dbPassword='root', dbName='default'):
     """Initialize db"""
+    print("Creating influx databases for host %s and port %d" % (dbHost, dbPort))
     client = InfluxDBClient(dbHost, dbPort, dbName, dbUser, dbPassword)
     dbList = list(map(lambda x: x['name'], client.get_list_database()))
     if dbName not in dbList:
@@ -177,7 +178,10 @@ def download_urls(urls, dest_folder=None):
 
 class Accessor(object):
     def env(self, env_name):
-        os.environ[env_name]
+        value = os.getenv(env_name)
+        if value is None:
+            print("Env variable not found: " + env_name)
+            sys.exit(errno.EPERM)
 
     def deployment_id():
         """Call kubernetes api container to retrieve the deployment id"""
@@ -191,6 +195,7 @@ class Accessor(object):
             sys.exit(errno.EPERM)
 
     def k8s_service(self, service_name, namespace='default'):
+        print("Getting k8s service url for service " + service_name)
         """Call kubernetes api service to get service cluster ip"""
         try:
             config.load_incluster_config()
