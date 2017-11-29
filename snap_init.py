@@ -181,6 +181,8 @@ class Accessor(object):
         value = os.getenv(env_name)
         if value is None:
             print("Env variable not found: " + env_name)
+            print("All envs found:")
+            print(os.environ)
             sys.exit(errno.EPERM)
 
     def deployment_id():
