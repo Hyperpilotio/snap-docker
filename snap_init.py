@@ -176,40 +176,29 @@ def download_urls(urls, dest_folder=None):
             files.append(local_path)
     return files
 
-class Accessor(object):
-    def env(self, env_name):
-        value = os.getenv(env_name)
-        if value is None:
-            print("Env variable not found: " + env_name)
-            print("All envs found:")
-            print(os.environ)
-            sys.exit(errno.EPERM)
+def env(env_name):
+    value = os.getenv(env_name)
+    if value is None:
+        print("Env variable not found: " + env_name)
+        print("All envs found:")
+        print(os.environ)
+        sys.exit(errno.EPERM)
+    return value
 
-    def deployment_id():
-        """Call kubernetes api container to retrieve the deployment id"""
-        try:
-            config.load_incluster_config()
-            nodes = client.CoreV1Api().list_node(watch=False)
-            if len(nodes.items) > 0:
-                return nodes.items[0].metadata.labels.get("hyperpilot/deployment", "")
-        except config.ConfigException:
-            print("Failed to load configuration. This container cannot run outside k8s.")
-            sys.exit(errno.EPERM)
-
-    def k8s_service(self, service_name, namespace='default'):
-        print("Getting k8s service url for service " + service_name)
-        """Call kubernetes api service to get service cluster ip"""
-        try:
-            config.load_incluster_config()
-            pod_service = client.CoreV1Api().read_namespaced_service(service_name, namespace)
-            cluster_ip = pod_service.spec.cluster_ip
-            port = pod_service.spec.ports[0].port
-            url = "http://%s:%s" % (cluster_ip, port)
-            print("Replacing k8s service %s to url %s" % (service_name, url))
-            return url
-        except config.ConfigException:
-            print("Failed to load configuration. This container cannot run outside k8s.")
-            sys.exit(errno.EPERM)
+def k8s_service(service_name, namespace='default'):
+    print("Getting k8s service url for service " + service_name)
+    """Call kubernetes api service to get service cluster ip"""
+    try:
+        config.load_incluster_config()
+        pod_service = client.CoreV1Api().read_namespaced_service(service_name, namespace)
+        cluster_ip = pod_service.spec.cluster_ip
+        port = pod_service.spec.ports[0].port
+        url = "http://%s:%s" % (cluster_ip, port)
+        print("Replacing k8s service %s to url %s" % (service_name, url))
+        return url
+    except config.ConfigException:
+        print("Failed to load configuration. This container cannot run outside k8s.")
+        sys.exit(errno.EPERM)
 
 def main():
     # Initialize
@@ -272,11 +261,10 @@ def main():
             template = Template(f.read(),
                                 variable_start_string="<%=",
                                 variable_end_string="=>")
+            template.globals['env'] = env
+            template.globals['k8s_service'] = k8s_service
             with open(task, "w") as f:
-                template_values = {
-                    'a': Accessor(),
-                }
-                f.write(template.render(template_values))
+                f.write(template.render({}))
 
         # Load Data from JSON file
         # Configure Influxdb
